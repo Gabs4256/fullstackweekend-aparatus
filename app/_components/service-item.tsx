@@ -17,6 +17,9 @@ import { ptBR } from "date-fns/locale";
 import { useAction } from "next-safe-action/hooks";
 import { createBooking } from "../_actions/create-booking";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { getDateAvailableTimeSlots } from "../_actions/get-date-avalible-time-slots";
+
 
 interface ServiceItemProps {
   service: BarbershopService & {
@@ -51,6 +54,18 @@ export function ServiceItem({ service }: ServiceItemProps) {
   const [selectedTime, setSelectedTime] = useState<string | undefined>();
   const { executeAsync, isPending } = useAction(createBooking);
   const [sheetIsOpen, setSheetIsOpen] = useState(false);
+  const { data: availableTimeSlots} = useQuery ({
+    queryKey: ["date-available-time-slots", service.barbershopId, selectedDate],
+    queryFn: () => getDateAvailableTimeSlots({
+      barbershopId: service.barbershopId,
+      date: selectedDate!,
+    }),
+    enabled: Boolean(selectedDate),
+  });
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+  }
 
   const priceInReais = (service.priceInCents / 100).toLocaleString("pt-BR", {
     style: "currency",
@@ -140,7 +155,7 @@ export function ServiceItem({ service }: ServiceItemProps) {
             <Calendar
               mode="single"
               selected={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={handleDateSelect}
               disabled={{ before: today }}
               className="w-full p-0"
               locale={ptBR}
@@ -152,7 +167,7 @@ export function ServiceItem({ service }: ServiceItemProps) {
               <Separator />
 
               <div className="flex gap-3 overflow-x-auto px-5 [&::-webkit-scrollbar]:hidden">
-                {TIME_SLOTS.map((time) => (
+                {availableTimeSlots?.data?.map((time) => (
                   <Button
                     key={time}
                     variant={selectedTime === time ? "default" : "outline"}
